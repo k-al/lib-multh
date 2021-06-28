@@ -43,7 +43,16 @@ int main() {
     tmp.thread_count = 7;
     tmp.del_it_pos = 3;
     tmp.cycletime = std::chrono::milliseconds(20);
-    tmp.cycle_end = [&iterator](std::vector<Testclass*>* list)->void {(*list)[iterator]->data[1]++;};
+    
+    tmp.cycle_end = [&iterator](std::vector<Testclass*>* list)->void {
+        if (list->size() > iterator) {
+            if (list->at(iterator)->data.size() > 1) {
+                list->at(iterator)->data[1]++;
+            }
+        } else {
+            iterator = 0;
+        }
+    };
     
     Listworker<Testclass> a(tmp);
     
