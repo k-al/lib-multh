@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <iostream>
+#include <functional>
 
 // multithreading
 #include <chrono>
@@ -14,6 +15,7 @@
 template <typename O>
 struct Listworker_ini {
     std::function<void(O*)> process_element;
+    std::function<void(std::vector<O*>*)> cycle_end;
     uint64_t thread_count = 2;
     std::chrono::duration<int64_t, std::milli> cycletime = std::chrono::milliseconds(1000);
     uint64_t del_it_pos = 0;
@@ -51,6 +53,7 @@ class Listworker {
     std::chrono::steady_clock::time_point now;
     
     std::function<void(O*)> process_element;
+    std::function<void(std::vector<O*>*)> cycle_end;
     
     ////////////////////////////////////////////////////
     // Constructor / Destructor
@@ -59,13 +62,14 @@ class Listworker {
     Listworker () {}
     
     Listworker (Listworker_ini<O> ini) {
-        if (ini.process_element == nullptr) {
+        if (!ini.process_element) {
             // throw
             std::cout << "Listworker initialization fails due nullptr as element-function\n";
             return;
         }
         
         this->process_element = ini.process_element;
+        this->cycle_end = ini.cycle_end;
         this->cycletime = ini.cycletime;
         this->thread_count = ini.thread_count;
         this->del_it_pos = ini.del_it_pos;
@@ -97,13 +101,14 @@ class Listworker {
             return false;
         }
         
-         if (ini.process_element == nullptr) {
+         if (!ini.process_element) {
             // throw
             std::cout << "Listworker initialization fails due nullptr as element-function\n";
             return false;
         }
         
         this->process_element = ini.process_element;
+        this->cycle_end = ini.cycle_end;
         this->cycletime = ini.cycletime;
         this->thread_count = ini.thread_count;
         this->del_it_pos = ini.del_it_pos;
@@ -183,7 +188,12 @@ class Listworker {
                         addel();
                     }
                     
-                    //! timehandeling and sleep
+                    // get the cycle_end function executed (only if set)
+                    if (this->cycle_end) {
+                        this->cycle_end(&this->main_list);
+                    }
+                    
+                    // timehandeling and sleep
                     this->now = std::chrono::steady_clock::now();
                     this->cycle_starts += this->cycletime;
                     
