@@ -38,7 +38,7 @@ int main() {
     
     int iterator = 0;
     
-    Listworker_ini<Testclass> tmp;
+    multh::Listworker_ini<Testclass> tmp;
     tmp.process_element = &work;
     tmp.thread_count = 7;
     tmp.del_it_pos = 3;
@@ -54,7 +54,7 @@ int main() {
         }
     };
     
-    Listworker<Testclass> a(tmp);
+    multh::Listworker<Testclass> a(tmp);
     
     Testclass ts[100000]{5, 6, 7, 8, 9, 10};
     a.add(&ts[0]);
