@@ -24,7 +24,7 @@ public:
     std::atomic<bool> multh_added[4] = {false, false, false, false};
 };
 
-void work(Testclass* a) {
+void work(Testclass* a, uint64_t cycle_nr) {
     if (a->data.size() < 2) {
         a->data.push_back(1);
     } else {
@@ -38,7 +38,7 @@ int main() {
     
     int iterator = 0;
     
-    Listworker_ini<Testclass> tmp;
+    multh::Listworker_ini<Testclass> tmp;
     tmp.process_element = &work;
     tmp.thread_count = 7;
     tmp.del_it_pos = 3;
@@ -54,7 +54,7 @@ int main() {
         }
     };
     
-    Listworker<Testclass> a(tmp);
+    multh::Listworker<Testclass> a(tmp);
     
     Testclass ts[100000]{5, 6, 7, 8, 9, 10};
     a.add(&ts[0]);
