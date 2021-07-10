@@ -14,7 +14,7 @@
 
 template <typename O>
 struct Listworker_ini {
-    std::function<void(O*)> process_element;
+    std::function<void(O*, uint64_t)> process_element;
     std::function<void(std::vector<O*>*)> cycle_end;
     uint64_t thread_count = 2;
     std::chrono::duration<int64_t, std::milli> cycletime = std::chrono::milliseconds(1000);
@@ -40,8 +40,9 @@ class Listworker {
     uint64_t thread_count = 0;
     std::vector<std::thread> threads;
     
-    bool w = false;
+    std::atomic<bool> w = false;
     std::atomic<uint64_t> main_list_it;
+    std::atomic<uint64_t> cycle_nr = 0;
     std::mutex it_reset_mtx;
     
     // condition_variable that is called everytime when a new cycle begins
@@ -52,7 +53,7 @@ class Listworker {
     std::chrono::steady_clock::time_point cycle_starts;
     std::chrono::steady_clock::time_point now;
     
-    std::function<void(O*)> process_element;
+    std::function<void(O*, uint64_t)> process_element;
     std::function<void(std::vector<O*>*)> cycle_end;
     
     ////////////////////////////////////////////////////
@@ -218,7 +219,7 @@ class Listworker {
             } else {
                 // loc_it is valid:
 //                 std::cout << "get to work\n";
-                process_element(main_list[loc_it]);
+                this->process_element(this->main_list[loc_it], this->cycle_nr);
             }
         }
     }

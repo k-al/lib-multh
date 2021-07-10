@@ -24,7 +24,7 @@ public:
     std::atomic<bool> multh_added[4] = {false, false, false, false};
 };
 
-void work(Testclass* a) {
+void work(Testclass* a, uint64_t cycle_nr) {
     if (a->data.size() < 2) {
         a->data.push_back(1);
     } else {
