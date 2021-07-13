@@ -120,13 +120,13 @@ namespace multh {
             return true;
         }
         
-        // start with an numer of threads
+        // start with a numer of threads
         inline void start() {
-            // not initialized
+            // break if not initialized
             if (!this->is_ini) {
                 return;
             }
-            
+            // break if allready running
             if (this->w) {
                 return;
             }
