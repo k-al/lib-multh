@@ -2,6 +2,9 @@ CFLAGS = -std=c++17 -O3 -pthread
 
 ALL_TESTS = tests/Listworker_t01.app tests/Listworker_t02.app
 
+clean:
+	rm ./tests/*.app
+
 test: $(ALL_TESTS)
 	./tests/Listworker_t01.app
 	./tests/Listworker_t02.app

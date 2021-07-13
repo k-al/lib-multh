@@ -38,6 +38,13 @@ void work_one (TestClass* subject, uint64_t cycle) {
 
 // must be exclusive with work_three
 void work_two (TestClass* subject, uint64_t cycle) {
+    
+    // if this is the first cycle for this 
+    if (subject->priv_cycle == 0) {
+        subject->priv_cycle = cycle;
+        return;
+    }
+    
     // with up to no load, each cycle should come to every subject
     if (++subject->priv_cycle != cycle) {
         std::lock_guard<std::mutex> print_lck(print_mtx);
@@ -48,6 +55,13 @@ void work_two (TestClass* subject, uint64_t cycle) {
 
 // must be exclusive with work_two
 void work_three (TestClass* subject, uint64_t cycle) {
+    
+    // if this is the first cycle for this 
+    if (subject->priv_cycle == 0) {
+        subject->priv_cycle = cycle;
+        return;
+    }
+    
     // cycle skipping is okay under heavy load, but should keep in order
     if (++subject->priv_cycle != cycle) {
         if (subject->priv_cycle < cycle) {
@@ -78,7 +92,7 @@ int main () {
     lw2_ini.process_element = work_two;
     lw2_ini.cycle_end = [](std::vector<TestClass*>* list)->void{
         std::lock_guard<std::mutex> print_lck(print_mtx);
-        std::cout << "through\n";
+        std::cout << "through one cycle\n";
     };
     lw2_ini.thread_count = 7;
     lw2_ini.cycle_time = std::chrono::milliseconds(50);
@@ -90,9 +104,9 @@ int main () {
     lw1.ini(lw1_ini);
     lw2.ini(lw2_ini);
     
-    TestClass tests[10000]; // create "a few tests"
+    TestClass tests[100]; // create a few tests
     
-    for (uint64_t i = 0; i < 10; ++i) {
+    for (uint64_t i = 0; i < 100; ++i) {
         lw1.add(&tests[i]);
         lw2.add(&tests[i]);
     }
@@ -100,6 +114,7 @@ int main () {
     lw1.start();
     lw2.start();
     
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     
     return 0;
 }
