@@ -19,14 +19,14 @@ namespace multh {
         std::function<void(O*, uint64_t)> process_element;
         std::function<void(std::vector<O*>*)> cycle_end;
         uint64_t thread_count = 2;
-        std::chrono::duration<int64_t, std::milli> cycletime = std::chrono::milliseconds(1000);
+        std::chrono::duration<int64_t, std::milli> cycle_time = std::chrono::milliseconds(1000);
         uint64_t del_it_pos = 0;
     };
 
     template <typename O>
     // class O must have:
     //      std::atomic<uint64_t> multh_del_it[1] = {0xFFFFFFFFFFFFFFFF};
-    //      std::atomic<bool> multh_added[1] = false;
+    //      std::atomic<bool> multh_added[1] = {false};
 
     class Listworker {
     public:
@@ -51,7 +51,7 @@ namespace multh {
         std::mutex next_cycle_mtx;
         std::condition_variable next_cycle_cv;
         
-        std::chrono::duration<int64_t, std::milli> cycletime;
+        std::chrono::duration<int64_t, std::milli> cycle_time;
         std::chrono::steady_clock::time_point cycle_starts;
         std::chrono::steady_clock::time_point now;
         
@@ -73,7 +73,7 @@ namespace multh {
             
             this->process_element = ini.process_element;
             this->cycle_end = ini.cycle_end;
-            this->cycletime = ini.cycletime;
+            this->cycle_time = ini.cycle_time;
             this->thread_count = ini.thread_count;
             this->del_it_pos = ini.del_it_pos;
             
@@ -112,7 +112,7 @@ namespace multh {
             
             this->process_element = ini.process_element;
             this->cycle_end = ini.cycle_end;
-            this->cycletime = ini.cycletime;
+            this->cycle_time = ini.cycle_time;
             this->thread_count = ini.thread_count;
             this->del_it_pos = ini.del_it_pos;
             
@@ -120,13 +120,13 @@ namespace multh {
             return true;
         }
         
-        // start with an numer of threads
+        // start with a number of threads
         inline void start() {
-            // not initialized
+            // break if not initialized
             if (!this->is_ini) {
                 return;
             }
-            
+            // break if allready running
             if (this->w) {
                 return;
             }
@@ -198,7 +198,7 @@ namespace multh {
                         
                         // timehandeling and sleep
                         this->now = std::chrono::steady_clock::now();
-                        this->cycle_starts += this->cycletime;
+                        this->cycle_starts += this->cycle_time;
                         
                         if (this->now < this->cycle_starts) {
                             std::this_thread::sleep_until(this->cycle_starts);
@@ -210,13 +210,14 @@ namespace multh {
                         
                         // cleanup and reset
                         this->main_list_it = 0;
+                        this->cycle_nr++;
                         it_reset_lck.unlock();
                         
                         this->next_cycle_cv.notify_all();
                     } else {
                         // wait until the next tick begins
                         std::unique_lock<std::mutex> lck(this->next_cycle_mtx);
-                        this->next_cycle_cv.wait_for(lck, this->cycletime * 16); // wait_for to prevent deadlocks
+                        this->next_cycle_cv.wait_for(lck, this->cycle_time * 16); // wait_for to prevent deadlocks
                     }
                 } else {
                     // loc_it is valid:

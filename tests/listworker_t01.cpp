@@ -42,7 +42,7 @@ int main() {
     tmp.process_element = &work;
     tmp.thread_count = 7;
     tmp.del_it_pos = 3;
-    tmp.cycletime = std::chrono::milliseconds(20);
+    tmp.cycle_time = std::chrono::milliseconds(20);
     
     tmp.cycle_end = [&iterator](std::vector<Testclass*>* list)->void {
         if (list->size() > iterator) {
