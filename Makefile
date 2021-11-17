@@ -1,4 +1,4 @@
-CFLAGS = -std=c++17 -O3 -pthread
+CFLAGS = -std=c++17 -O3 -pthread -Wall
 
 ALL_TESTS = tests/Listworker_t01.app tests/Listworker_t02.app
 
