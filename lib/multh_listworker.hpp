@@ -232,7 +232,7 @@ namespace multh {
             std::lock_guard<std::mutex> lck(this->addel_mtx); // lock for modification
             
             int64_t advance = this->add_list.size() - this->del_list.size(); // get how much the main_list size must tweaked
-            int64_t replace = (this->add_list.size() < this->del_list.size()) ? this->add_list.size() : this->del_list.size(); // get the number of elements wich can easily replaced
+            uint64_t replace = (this->add_list.size() < this->del_list.size()) ? this->add_list.size() : this->del_list.size(); // get the number of elements wich can easily replaced
             uint64_t i = 0;
             
             uint64_t tmp;
