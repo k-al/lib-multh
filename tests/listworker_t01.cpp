@@ -36,7 +36,7 @@ void work(Testclass* a, uint64_t cycle_nr) {
 
 int main() {
     
-    int iterator = 0;
+    unsigned int iterator = 0;
     
     multh::Listworker_ini<Testclass> tmp;
     tmp.process_element = &work;
