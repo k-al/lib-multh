@@ -31,7 +31,7 @@ namespace multh {
     class Listworker {
     public:
         bool is_ini = false;
-        uint64_t del_it_pos = 0;
+        const uint64_t del_it_pos;
         
         std::vector<O*> main_list;
         
@@ -227,20 +227,17 @@ namespace multh {
             }
         }
         
-        //# mutithread addel
+        //# mutithread addel?
         inline void addel() {
             std::lock_guard<std::mutex> lck(this->addel_mtx); // lock for modification
             
-            int64_t advance = this->add_list.size() - this->del_list.size(); // get how much the main_list size must tweaked
-            uint64_t replace = (this->add_list.size() < this->del_list.size()) ? this->add_list.size() : this->del_list.size(); // get the number of elements wich can easily replaced
-            uint64_t i = 0;
-            
-            uint64_t tmp;
+            const int advance = this->add_list.size() - this->del_list.size(); // get how much the main_list size must tweaked
+            const size_t replace = (this->add_list.size() < this->del_list.size()) ? this->add_list.size() : this->del_list.size(); // get the number of elements wich can easily replaced
             
             // work up the smaller list with just replaces
-            for (; i < replace; ++i) {
+            for (size_t i = 0; i < replace; ++i) {
                 // switch multh_del_it of the elements that shold be replaced
-                tmp = this->del_list[i]->multh_del_it[del_it_pos].load();
+                const uint64_t tmp = this->del_list[i]->multh_del_it[del_it_pos].load();
                 this->add_list[i]->multh_del_it[del_it_pos] = tmp;
                 this->del_list[i]->multh_del_it[del_it_pos] = 0xFFFFFFFFFFFFFFFF;
                 // replace the element
@@ -251,22 +248,32 @@ namespace multh {
                 // skip directly to cleanup
             } else if (advance > 0) {
                 // main_list must be expanded:
-                i = this->main_list.size();
+                
+                size_t it = this->main_list.size();
                 this->main_list.insert(this->main_list.end(), this->add_list.begin(),  this->add_list.end()); // expand with an insert
                 
-                tmp = this->main_list.size();
-                for (; i < tmp; ++i) { // write multh_del_it in all new inserted elements
-                    this->main_list[i]->multh_del_it[del_it_pos] = i;
+                const size_t end = this->main_list.size();
+                for (; it < end; ++it) { // write multh_del_it in all new inserted elements
+                    this->main_list[it]->multh_del_it[del_it_pos] = static_cast<uint64_t>(it);
                 }
             } else {
                 // main_list must shrink:
-                //# shrink with resize?
-                this->main_list.erase(this->main_list.end() + advance, this->main_list.end()); // shrink with an erase
+                const size_t reduce = static_cast<size_t>(-advance);
+                const size_t size = this->main_list.size() - 1;
                 
                 replace -= advance;
-                for (; i < replace; ++i) {
-                    this->del_list[i]->multh_del_it[del_it_pos] = 0xFFFFFFFFFFFFFFFF;
+                for (size_t i = 0; i < reduce; ++i) {
+                    
+                    //! this must be redone, when i'm less tired
+                    
+                    
+                    const uint64_t tmp = this->del_list[replace + i]->multh_del_it[del_it_pos].load();
+                    this->main_list[tmp] = this->main_list[size - i];
+                    this->del_list[replace + i]->multh_del_it[del_it_pos] = 0xFFFFFFFFFFFFFFFF;
                 }
+                
+                //# shrink with resize?
+                this->main_list.erase(this->main_list.end() - reduce, this->main_list.end()); // shrink with an erase
             }
             // cleanup
             this->del_list.clear();
