@@ -151,7 +151,7 @@ namespace multh {
         
         // queue Object for adding
         inline void add(O* ptr) {
-            if (!ptr->multh_added[this->del_it_pos].exchange(true)) { // modify to_wake
+            if (ptr->multh_del_it[this->del_it_pos] == 0xFFFFFFFFFFFFFFFF && !ptr->multh_added[this->del_it_pos].exchange(true)) { // modify to_wake
                 std::lock_guard<std::mutex> lck(this->addel_mtx);
                 this->add_list.push_back(ptr);
             }
