@@ -31,7 +31,7 @@ namespace multh {
     class Listworker {
     public:
         bool is_ini = false;
-        const uint64_t del_it_pos;
+        uint64_t del_it_pos;
         
         std::vector<O*> main_list;
         
@@ -261,15 +261,20 @@ namespace multh {
                 const size_t reduce = static_cast<size_t>(-advance);
                 const size_t size = this->main_list.size() - 1;
                 
-                replace -= advance;
+                // iterate the remaining elements
                 for (size_t i = 0; i < reduce; ++i) {
                     
-                    //! this must be redone, when i'm less tired
-                    
-                    
+                    // get the save (not will be deleted deleted) position from the element that must be deleted
+                    //     (if its in deletion range it will be moved away later on or its the same position as the to delete element, and thats both fine)
                     const uint64_t tmp = this->del_list[replace + i]->multh_del_it[del_it_pos].load();
-                    this->main_list[tmp] = this->main_list[size - i];
+                    // move the i'th element from behind to that save spot (the to-be-deleted element ist not anymore in the list now)
+                    this->main_list[static_cast<size_t>(tmp)] = this->main_list[size - i];
+                    // the saved element must know its new location
+                    this->main_list[static_cast<size_t>(tmp)]->multh_del_it[del_it_pos] = tmp;
+                    // the deleted element can still be accessed through del_list and gets its del_it freed
                     this->del_list[replace + i]->multh_del_it[del_it_pos] = 0xFFFFFFFFFFFFFFFF;
+                    
+                    // after the incrementation of i (in the for), the last i elements can savely be deleted
                 }
                 
                 //# shrink with resize?
