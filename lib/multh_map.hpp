@@ -81,6 +81,7 @@ namespace multh {
         
         // remove element associated with the Key from the bucket
         //     and return the pointer to the removed data (nullptr, if key was not found) for further resource management
+        [[nodiscard]]
         Data_Type* del (const Key_Type key) {
             
             // iterate through the list to find 'key'
@@ -127,23 +128,55 @@ namespace multh {
     
     class Map {
     public:
+        Hash_Function hash_function;
         std::shared_mutex rehash_mtx;
         std::vector<std::mutex> bucket_mutex;
-        std::unordered_map<Key_Type, Data_Type, Hash_Function> data;
-        
+        std::vector<Bucket<Key_Type, Data_Type>> buckets;
         
         // get the data belonged to *key*
-        Data_Type* get (Key_Type key);
+        inline Data_Type* get (Key_Type key) {
+            return this->get(key, std::uinque_lock());
+        }
         
         // get the data belonged to *key* and keep the bucket locked with the *guard*
-        Data_Type* get (Key_Type key, std::lock_guard& guard);
+        Data_Type* get (Key_Type key, std::unique_lock& guard) {
+            size_t hash = hash_function(key);
+            
+            std::shared_lock<std::shared_mutex> shared_lock_guard(this->rehash_mtx);
+            hash = hash % this->buckets.size;
+            
+            guard = std::unique_lock(this->bucket_mutex[hash]);
+            return buckets[hash].get(key);
+        }
         
         // returns true if the pair [key, data] was succesfully added
-        bool insert (Key_Type key, Data_Type data);
+        bool insert (Key_Type key, Data_Type* data) {
+            size_t hash = hash_function(key);
+            
+            std::shared_lock<std::shared_mutex> shared_lock_guard(this->rehash_mtx);
+            hash = hash % this->buckets.size;
+            
+            std::unique_lock bucket_lock_guard(this->bucket_mutex[hash]);
+            return buckets[hash].add(std::pair<Key_Type, Data_Type*>(key, data));
+        }
         
-        
+        bool erease (Key_Type key) {
+            size_t hash = hash_function(key);
+            
+            std::shared_lock<std::shared_mutex> shared_lock_guard(this->rehash_mtx);
+            hash = hash % this->buckets.size;
+            
+            std::unique_lock bucket_lock_guard(this->bucket_mutex[hash]);
+            Data_Type* ptr = buckets[hash].del(std::pair<Key_Type, Data_Type*>(key, data));
+            
+            if (ptr) {
+                delete(ptr);
+                return true;
+            } else {
+                return false;
+            }
+        }
     }
-    
 }
 
 #endif
