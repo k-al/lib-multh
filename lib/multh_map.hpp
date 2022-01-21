@@ -79,7 +79,7 @@ namespace multh {
             this->size++;
             
             // check if reallocation of the memory must happen
-            if (this->size >= this->capacity) {
+            if (this->size > this->capacity) {
                 // increase the capacity linear
                 this->capacity += 2;
                 
