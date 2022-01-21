@@ -31,7 +31,7 @@ namespace multh {
     class Listworker {
     public:
         bool is_ini = false;
-        uint64_t del_it_pos = 0;
+        uint64_t del_it_pos;
         
         std::vector<O*> main_list;
         
@@ -151,7 +151,7 @@ namespace multh {
         
         // queue Object for adding
         inline void add(O* ptr) {
-            if (!ptr->multh_added[this->del_it_pos].exchange(true)) { // modify to_wake
+            if (ptr->multh_del_it[this->del_it_pos] == 0xFFFFFFFFFFFFFFFF && !ptr->multh_added[this->del_it_pos].exchange(true)) { // modify to_wake
                 std::lock_guard<std::mutex> lck(this->addel_mtx);
                 this->add_list.push_back(ptr);
             }
@@ -227,20 +227,17 @@ namespace multh {
             }
         }
         
-        //# mutithread addel
+        //# mutithread addel?
         inline void addel() {
             std::lock_guard<std::mutex> lck(this->addel_mtx); // lock for modification
             
-            int64_t advance = this->add_list.size() - this->del_list.size(); // get how much the main_list size must tweaked
-            uint64_t replace = (this->add_list.size() < this->del_list.size()) ? this->add_list.size() : this->del_list.size(); // get the number of elements wich can easily replaced
-            uint64_t i = 0;
-            
-            uint64_t tmp;
+            const int advance = this->add_list.size() - this->del_list.size(); // get how much the main_list size must tweaked
+            const size_t replace = (this->add_list.size() < this->del_list.size()) ? this->add_list.size() : this->del_list.size(); // get the number of elements wich can easily replaced
             
             // work up the smaller list with just replaces
-            for (; i < replace; ++i) {
+            for (size_t i = 0; i < replace; ++i) {
                 // switch multh_del_it of the elements that shold be replaced
-                tmp = this->del_list[i]->multh_del_it[del_it_pos].load();
+                const uint64_t tmp = this->del_list[i]->multh_del_it[del_it_pos].load();
                 this->add_list[i]->multh_del_it[del_it_pos] = tmp;
                 this->del_list[i]->multh_del_it[del_it_pos] = 0xFFFFFFFFFFFFFFFF;
                 // replace the element
@@ -251,22 +248,37 @@ namespace multh {
                 // skip directly to cleanup
             } else if (advance > 0) {
                 // main_list must be expanded:
-                i = this->main_list.size();
+                
+                size_t it = this->main_list.size();
                 this->main_list.insert(this->main_list.end(), this->add_list.begin(),  this->add_list.end()); // expand with an insert
                 
-                tmp = this->main_list.size();
-                for (; i < tmp; ++i) { // write multh_del_it in all new inserted elements
-                    this->main_list[i]->multh_del_it[del_it_pos] = i;
+                const size_t end = this->main_list.size();
+                for (; it < end; ++it) { // write multh_del_it in all new inserted elements
+                    this->main_list[it]->multh_del_it[del_it_pos] = static_cast<uint64_t>(it);
                 }
             } else {
                 // main_list must shrink:
-                //# shrink with resize?
-                this->main_list.erase(this->main_list.end() + advance, this->main_list.end()); // shrink with an erase
+                const size_t reduce = static_cast<size_t>(-advance);
+                const size_t size = this->main_list.size() - 1;
                 
-                replace -= advance;
-                for (; i < replace; ++i) {
-                    this->del_list[i]->multh_del_it[del_it_pos] = 0xFFFFFFFFFFFFFFFF;
+                // iterate the remaining elements
+                for (size_t i = 0; i < reduce; ++i) {
+                    
+                    // get the save (not will be deleted deleted) position from the element that must be deleted
+                    //     (if its in deletion range it will be moved away later on or its the same position as the to delete element, and thats both fine)
+                    const uint64_t tmp = this->del_list[replace + i]->multh_del_it[del_it_pos].load();
+                    // move the i'th element from behind to that save spot (the to-be-deleted element ist not anymore in the list now)
+                    this->main_list[static_cast<size_t>(tmp)] = this->main_list[size - i];
+                    // the saved element must know its new location
+                    this->main_list[static_cast<size_t>(tmp)]->multh_del_it[del_it_pos] = tmp;
+                    // the deleted element can still be accessed through del_list and gets its del_it freed
+                    this->del_list[replace + i]->multh_del_it[del_it_pos] = 0xFFFFFFFFFFFFFFFF;
+                    
+                    // after the incrementation of i (in the for), the last i elements can savely be deleted
                 }
+                
+                //# shrink with resize?
+                this->main_list.erase(this->main_list.end() - reduce, this->main_list.end()); // shrink with an erase
             }
             // cleanup
             this->del_list.clear();
